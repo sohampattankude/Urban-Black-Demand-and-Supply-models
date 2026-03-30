@@ -1,0 +1,75 @@
+# Demand Forecasting Model Configuration
+# Version: 1.0.0
+
+# Data Configuration
+data:
+  raw_path: "data/raw"
+  processed_path: "data/processed"
+  time_indices_path: "data/time_based_indices/seasonal_indices_v1.1.json"
+  lookback_days: 180
+  test_split: 0.15
+  val_split: 0.15
+
+# Feature Engineering
+features:
+  seq_length: 24  # 6 hours of 15-min buckets
+  geohash_precision: 5
+  lag_distances: [1, 2, 4, 6, 24, 96]
+  rolling_windows: [4, 12, 48]  # 1h, 3h, 12h
+
+# LSTM Model Configuration
+lstm:
+  units_layer1: 64
+  units_layer2: 32
+  dropout_rate: 0.22
+  epochs: 100
+  batch_size: 32
+  learning_rate: 0.001
+  early_stopping_patience: 5
+  reduce_lr_patience: 3
+
+# XGBoost Configuration
+xgboost:
+  max_depth: 7
+  learning_rate: 0.1
+  subsample: 0.81
+  colsample_bytree: 0.79
+  lambda: 1.2
+  alpha: 0.4
+  num_boost_round: 150
+  early_stopping_rounds: 10
+
+# Ensemble Configuration
+ensemble:
+  lstm_weight: 0.6
+  xgboost_weight: 0.4
+  horizons: [15, 30, 60, 120]
+
+# Training Configuration
+training:
+  model_name: "demand_forecasting"
+  model_version: "1.0.0"
+  random_seed: 42
+  n_jobs: -1
+
+# Evaluation Configuration
+evaluation:
+  test_set_path: "data/processed/demand_features_test.parquet"
+  metrics:
+    - "mae"
+    - "rmse"
+    - "mape"
+    - "p90_error"
+
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  reload: true
+
+# Monitoring Configuration
+monitoring:
+  prometheus_port: 8001
+  enable_metrics: true
+  log_predictions: false
