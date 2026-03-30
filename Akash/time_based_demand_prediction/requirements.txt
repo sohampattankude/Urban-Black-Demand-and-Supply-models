@@ -6,3 +6,5 @@ joblib
 SQLAlchemy
 psycopg2-binary
 geopy
+matplotlib
+seaborn

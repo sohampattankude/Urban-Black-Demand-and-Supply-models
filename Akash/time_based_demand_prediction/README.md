@@ -23,6 +23,8 @@ This repository contains the authoritative **Time-Based Demand Prediction** engi
 *   `src/train.py`: The foundational machine learning script responsible for baseline training on proxy/dummy datasets (e.g., historical NYC Uber data) to establish the initial `.pkl` weights and JSON mappings before production deployment.
 *   `src/retrain.py`: The production-grade live retraining engine. Once the backend actively records organic rider requests, this engine connects directly to the PostgreSQL `urbanblack_ride` database to download the real-time continuous data. When triggered by a Server Cron Job, it automatically re-runs the XGBoost algorithms over the new reality, replaces the `.pkl` files, and pushes customized JSON intelligence drops automatically.
 *   `src/predict.py`: The real-time inference engine. Ingests localized driver heartbeat pings (`lat`, `lng`, `updatedAt`) to yield lightning-fast instantaneous demand volume forecasts.
+*   `src/eda_visualizer.py`: The Exploratory Data Analysis plotting utility. Processes the database tables to render visual PNG maps (e.g. Demand Heatmaps, Spatiotemporal distributions, Hourly trends) for executive dashboard review.
+*   `outputs/plots/*.png`: Generated visual representations of the dataset demand curves.
 *   `outputs/demand_patterns.json`: The live heuristic intelligence matrix containing evaluation metrics (MAE, RMSE) and predictive zone configurations.
 *   `models/*.pkl`: The serialized intelligence weights (KMeans Mapping and XGBoost Regressor).
 
@@ -43,10 +45,14 @@ This repository contains the authoritative **Time-Based Demand Prediction** engi
     ```bash
     python src/predict.py
     ```
+*   **Generate Dashboard EDA Plots:**
+    ```bash
+    python src/eda_visualizer.py
+    ```
 *   **Trigger Batch Synchronization (Retraining):** 
     ```bash
     python src/retrain.py
     ```
 
 ---
-
+*Engineered by Akash Taralekar as part of the Urban Black Demand & Supply Models Infrastructure.*
