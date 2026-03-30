@@ -1,0 +1,52 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Data (raw/processed)
+data/raw/
+data/processed/
+*.parquet
+*.csv
+
+# Model artifacts
+models/*.h5
+models/*.pkl
+models/*.json
+models/metadata.yaml
+
+# Logs
+logs/
+*.log
+.ipynb_checkpoints/
+__pycache__/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+.Python
+dist/
+build/
+*.egg-info/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Jupyter
+.ipynb_checkpoints/
+*checkpoint.ipynb
