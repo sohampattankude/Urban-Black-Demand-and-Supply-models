@@ -20,8 +20,8 @@ This repository contains the authoritative **Time-Based Demand Prediction** engi
    Upon each offline retraining cycle, the module seamlessly outputs a highly structured `demand_patterns.json` state payload. This optimized artifact serves as the direct intelligence bridge for downstream Demand Forecasting and Supply Allocation Spring Boot microservices.
 
 ## File Structure
-*   `src/train.py`: The foundational machine learning script responsible for baseline training, initial feature engineering, and base `.pkl` export mapping.
-*   `src/retrain.py`: The production-grade offline retraining engine. Designed to be triggered by a Server Cron Job, it reads live active event datasets from PostgreSQL, recalculates all intelligence parameters dynamically, and pushes fresh JSON API data.
+*   `src/train.py`: The foundational machine learning script responsible for baseline training on proxy/dummy datasets (e.g., historical NYC Uber data) to establish the initial `.pkl` weights and JSON mappings before production deployment.
+*   `src/retrain.py`: The production-grade live retraining engine. Once the backend actively records organic rider requests, this engine connects directly to the PostgreSQL `urbanblack_ride` database to download the real-time continuous data. When triggered by a Server Cron Job, it automatically re-runs the XGBoost algorithms over the new reality, replaces the `.pkl` files, and pushes customized JSON intelligence drops automatically.
 *   `src/predict.py`: The real-time inference engine. Ingests localized driver heartbeat pings (`lat`, `lng`, `updatedAt`) to yield lightning-fast instantaneous demand volume forecasts.
 *   `outputs/demand_patterns.json`: The live heuristic intelligence matrix containing evaluation metrics (MAE, RMSE) and predictive zone configurations.
 *   `models/*.pkl`: The serialized intelligence weights (KMeans Mapping and XGBoost Regressor).
