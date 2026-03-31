@@ -4,6 +4,9 @@
         "data_days": 183,
         "test_mae": 8.35,
         "test_rmse": 20.71,
+        "test_mape_percentage": 22.9,
+        "test_accuracy_r2": 0.9874,
+        "last_retrained": "2026-03-31 22:49:26",
         "best_params": {
             "learning_rate": 0.1,
             "max_depth": 8,

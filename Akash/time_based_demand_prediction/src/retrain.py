@@ -3,7 +3,7 @@ import numpy as np
 from sqlalchemy import create_engine
 from sklearn.cluster import KMeans
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, mean_absolute_percentage_error
 from geopy.geocoders import GoogleV3
 from geopy.exc import GeocoderTimedOut
 import xgboost as xgb
@@ -17,7 +17,7 @@ import os
 # The backend uses PostgreSQL with DB=urbanblack_ride, USER=postgres, PASS=root
 DB_URL = "postgresql+psycopg2://postgres:root@localhost:5432/urbanblack_ride"
 
-print("📡 Connecting to PostgreSQL (urbanblack_ride)...")
+print("Connecting to PostgreSQL (urbanblack_ride)...")
 try:
     engine = create_engine(DB_URL)
     
@@ -37,7 +37,7 @@ try:
         print("⚠️ Warning: Database is empty! To prevent crash, skipping retraining. Awaiting real Pune data.")
         exit(0)
     
-    print(f"✅ Downloaded {len(df)} live Pune ride records!")
+    print(f"Downloaded {len(df)} live Pune ride records!")
 except Exception as e:
     print(f"❌ Database Error: {e}")
     print("Ensure your Docker container/Postgres is running on localhost:5432!")
@@ -46,7 +46,7 @@ except Exception as e:
 # -----------------------------
 # 2. PREPROCESS
 # -----------------------------
-print("⚙️ Processing Data...")
+print("Processing Data...")
 df['datetime'] = pd.to_datetime(df['datetime'])
 df['hour'] = df['datetime'].dt.hour
 df['day_of_week'] = df['datetime'].dt.weekday
@@ -56,7 +56,7 @@ df['date'] = df['datetime'].dt.date
 # -----------------------------
 # 3. GEOGRAPHY (KMEANS) & REVERSE GEOCODING
 # -----------------------------
-print("🗺️ Rebuilding Pune Geographic Zones...")
+print("Rebuilding Pune Geographic Zones...")
 kmeans = KMeans(n_clusters=min(10, len(df)), random_state=42)
 df['zone_id'] = kmeans.fit_predict(df[['lat', 'lon']])
 
@@ -85,7 +85,7 @@ for idx, center in enumerate(kmeans.cluster_centers_):
         print(f"⚠️ Google API Failure on Zone {idx}: {e}")
         zone_names[f"zone_{idx}"] = f"Zone_{idx}"
 
-print(f"✅ Found Localities: {list(zone_names.values())}")
+print(f"Found Localities: {list(zone_names.values())}")
 
 # -----------------------------
 # 4. AGGREGATION
@@ -101,7 +101,7 @@ demand['ride_count'] = demand.apply(
 # -----------------------------
 # 5. RETRAIN MODEL & FINE TUNING
 # -----------------------------
-print("🧠 Retraining XGBoost Model...")
+print("Retraining XGBoost Model...")
 X = demand[['zone_id', 'hour', 'day_of_week', 'is_weekend']]
 y = demand['ride_count']
 
@@ -129,15 +129,24 @@ else:
     y_pred = model.predict(X_test)
     mae = mean_absolute_error(y_test, y_pred)
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+    r2 = r2_score(y_test, y_pred)
+    mape = mean_absolute_percentage_error(y_test, y_pred)
+else:
+    r2, mape = 0, 0
+
 
 print(f"📊 Accuracy metrics updated. Ready for deployment.")
 
 # -----------------------------
 # 6. SAVE UPDATED MODELS
 # -----------------------------
-os.makedirs("../models", exist_ok=True)
-joblib.dump(model, "../models/time_demand_model.pkl")
-joblib.dump(kmeans, "../models/zone_model.pkl")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_DIR = os.path.join(BASE_DIR, "models")
+OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+
+os.makedirs(MODEL_DIR, exist_ok=True)
+joblib.dump(model, os.path.join(MODEL_DIR, "time_demand_model.pkl"))
+joblib.dump(kmeans, os.path.join(MODEL_DIR, "zone_model.pkl"))
 
 # -----------------------------
 # 7. JSON GENERATION (FORECASTING EXPORT)
@@ -171,6 +180,9 @@ output_json = {
         "data_days": int(df['date'].nunique()),
         "test_mae": round(float(mae), 2) if mae else None,
         "test_rmse": round(float(rmse), 2) if rmse else None,
+        "test_mape_percentage": round(float(mape * 100), 2) if mape else None,
+        "test_accuracy_r2": round(float(r2), 4) if r2 else None,
+        "last_retrained": pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S'),
         "best_params": best_params,
         "zone_mapping": zone_names
     },
@@ -182,8 +194,8 @@ output_json = {
     }
 }
 
-os.makedirs("../outputs", exist_ok=True)
-with open("../outputs/demand_patterns.json", "w") as f:
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+with open(os.path.join(OUTPUT_DIR, "demand_patterns.json"), "w") as f:
     json.dump(output_json, f, indent=4)
 
 print("[SUCCESS] Pune Retraining Pipeline Complete! System is fully synced.")

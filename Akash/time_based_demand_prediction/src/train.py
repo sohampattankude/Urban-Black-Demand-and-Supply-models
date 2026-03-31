@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, mean_absolute_percentage_error
 from geopy.geocoders import GoogleV3
 import xgboost as xgb
 import joblib
@@ -12,13 +12,21 @@ import os
 # -----------------------------
 # LOAD DATA
 # -----------------------------
+# Get absolute path to the data folder
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+MODEL_DIR = os.path.join(BASE_DIR, "models")
+OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+
 files = [
-    "../data/uber-raw-data-apr14.csv",
-    "../data/uber-raw-data-may14.csv",
-    "../data/uber-raw-data-jun14.csv",
-    "../data/uber-raw-data-jul14.csv",
-    "../data/uber-raw-data-aug14.csv",
-    "../data/uber-raw-data-sep14.csv"
+    os.path.join(DATA_DIR, f) for f in [
+        "uber-raw-data-apr14.csv",
+        "uber-raw-data-may14.csv",
+        "uber-raw-data-jun14.csv",
+        "uber-raw-data-jul14.csv",
+        "uber-raw-data-aug14.csv",
+        "uber-raw-data-sep14.csv"
+    ]
 ]
 
 df_list = [pd.read_csv(f) for f in files]
@@ -42,7 +50,7 @@ df['date'] = df['datetime'].dt.date
 kmeans = KMeans(n_clusters=10, random_state=42)
 df['zone_id'] = kmeans.fit_predict(df[['lat', 'lon']])
 
-print("🗺️ Reverse Geocoding via Google Maps API...")
+print("Reverse Geocoding via Google Maps API...")
 GOOGLE_MAPS_API_KEY = "AIzaSyBgsKbZcmM1dG7SuIMMPBcP5Ta6_LEYgEc"
 geolocator = GoogleV3(api_key=GOOGLE_MAPS_API_KEY)
 zone_names = {}
@@ -65,7 +73,7 @@ for idx, center in enumerate(kmeans.cluster_centers_):
         print(f"⚠️ Google API Failure on Zone {idx}: {e}")
         zone_names[f"zone_{idx}"] = f"Zone_{idx}"
 
-print(f"✅ Found NYC Localities: {list(zone_names.values())}")
+print(f"Found NYC Localities: {list(zone_names.values())}")
 
 # -----------------------------
 # AGGREGATION
@@ -117,17 +125,21 @@ print(f"Best Parameters: {grid_search.best_params_}")
 y_pred = model.predict(X_test)
 mae = mean_absolute_error(y_test, y_pred)
 rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+r2 = r2_score(y_test, y_pred)
+mape = mean_absolute_percentage_error(y_test, y_pred)
 
 print(f"Model Evaluation Metrics on Test Set (20%):")
 print(f" - MAE:  {mae:.2f} rides")
 print(f" - RMSE: {rmse:.2f} rides")
+print(f" - R2 Score: {r2:.4f}")
+print(f" - MAPE: {mape*100:.2f}%")
 
 # -----------------------------
 # SAVE MODELS
 # -----------------------------
-os.makedirs("../models", exist_ok=True)
-joblib.dump(model, "../models/time_demand_model.pkl")
-joblib.dump(kmeans, "../models/zone_model.pkl")
+os.makedirs(MODEL_DIR, exist_ok=True)
+joblib.dump(model, os.path.join(MODEL_DIR, "time_demand_model.pkl"))
+joblib.dump(kmeans, os.path.join(MODEL_DIR, "zone_model.pkl"))
 
 # -----------------------------
 # JSON GENERATION
@@ -159,8 +171,11 @@ output_json = {
     "metadata": {
         "model": "time_based_demand_prediction",
         "data_days": int(df['date'].nunique()),
-        "test_mae": round(mae, 2),
-        "test_rmse": round(rmse, 2),
+        "test_mae": round(float(mae), 2),
+        "test_rmse": round(float(rmse), 2),
+        "test_mape_percentage": round(float(mape * 100), 2),
+        "test_accuracy_r2": round(float(r2), 4),
+        "last_retrained": pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S'),
         "best_params": grid_search.best_params_,
         "zone_mapping": zone_names
     },
@@ -172,8 +187,8 @@ output_json = {
     }
 }
 
-os.makedirs("../outputs", exist_ok=True)
-with open("../outputs/demand_patterns.json", "w") as f:
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+with open(os.path.join(OUTPUT_DIR, "demand_patterns.json"), "w") as f:
     json.dump(output_json, f, indent=4)
 
 print("[SUCCESS] Training + JSON complete")

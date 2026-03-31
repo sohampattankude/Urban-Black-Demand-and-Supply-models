@@ -8,3 +8,5 @@ psycopg2-binary
 geopy
 matplotlib
 seaborn
+fastapi
+uvicorn

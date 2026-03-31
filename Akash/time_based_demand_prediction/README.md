@@ -23,6 +23,8 @@ This repository contains the authoritative **Time-Based Demand Prediction** engi
 *   `src/train.py`: The foundational machine learning script responsible for baseline training on proxy/dummy datasets (e.g., historical NYC Uber data) to establish the initial `.pkl` weights and JSON mappings before production deployment.
 *   `src/retrain.py`: The production-grade live retraining engine. Once the backend actively records organic rider requests, this engine connects directly to the PostgreSQL `urbanblack_ride` database to download the real-time continuous data. When triggered by a Server Cron Job, it automatically re-runs the XGBoost algorithms over the new reality, replaces the `.pkl` files, and pushes customized JSON intelligence drops automatically.
 *   `src/predict.py`: The real-time inference engine. Ingests localized driver heartbeat pings (`lat`, `lng`, `updatedAt`) to yield lightning-fast instantaneous demand volume forecasts.
+*   `src/app.py`: The production REST API service. Built using **FastAPI**, it provides a real-time bridge for the backend to query demand predictions and model health.
+*   `src/predict.py`: The local inference utility script.
 *   `src/eda_visualizer.py`: The Exploratory Data Analysis plotting utility. Processes the database tables to render visual PNG maps (e.g. Demand Heatmaps, Spatiotemporal distributions, Hourly trends) for executive dashboard review.
 *   `outputs/plots/*.png`: Generated visual representations of the dataset demand curves.
 *   `outputs/demand_patterns.json`: The live heuristic intelligence matrix containing evaluation metrics (MAE, RMSE) and predictive zone configurations.
@@ -41,10 +43,14 @@ This repository contains the authoritative **Time-Based Demand Prediction** engi
     ```bash
     python src/train.py
     ```
-*   **Execute Real-Time Prediction:** 
+*   **Start the Production API:**
     ```bash
-    python src/predict.py
+    python -m uvicorn src.app:app --host 0.0.0.0 --port 8000 --reload
     ```
+*   **API Endpoints:**
+    - `GET /health`: Model health status (Standard Heartbeat).
+    - `GET /predict?lat=X&lon=Y`: Real-time demand volume prediction.
+    - `GET /indices`: Intelligence drop for forecasting models (Soham's Model).
 *   **Generate Dashboard EDA Plots:**
     ```bash
     python src/eda_visualizer.py
