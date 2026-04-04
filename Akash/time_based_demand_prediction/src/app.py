@@ -19,6 +19,20 @@ except Exception as e:
     print(f"Error loading models: {e}")
     model, kmeans = None, None
 
+@app.get("/")
+def home():
+    """Redirect users to the documentation page if they hit the root URL."""
+    return {
+        "message": "Welcome to Urban Black Demand Prediction API!",
+        "status": "online",
+        "endpoints": {
+            "prediction": "/predict",
+            "metadata": "/indices",
+            "health": "/health",
+            "interactive_docs": "/docs"
+        }
+    }
+
 @app.get("/health")
 def health_check():
     """Service status heartbeat for production monitoring."""
@@ -81,4 +95,5 @@ def get_indices():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Use the app object directly to avoid 'no module named app' errors!
+    uvicorn.run(app, host="0.0.0.0", port=8001)
